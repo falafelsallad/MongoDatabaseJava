@@ -5,103 +5,101 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Sorts;
 import org.bson.Document;
-
+import org.example.*;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Queries {
 
-    public static long countMoviesFrom1975(MongoCollection<Document> collection) {
-        return collection.countDocuments(Filters.eq("year", 1975));
+    public static List <Document> fetchMovies(MongoCollection<Document> collection){
+        return collection.find(Filters.eq("year", 1975)).into(new ArrayList<>());
     }
 
-    public static int findLongestMovieRuntime(MongoCollection<Document> collection) {
-        var result=  collection.find(Filters.exists("runtime", true))
-                .sort(Sorts.descending("runtime"))
-                .limit(1)
-//                .map(doc -> doc.getInteger("runtime", 0))
-                .first();
-        return result !=null ? result.getInteger("runtime") : 0;
+    public static <T> T process(List<Document> movies, MoviesStreamer<T> streamer){
+        return streamer.process(movies.stream());
     }
 
-    public static List<String> countUniqueGenres1975(MongoCollection<Document> collection) {
-        var result = collection.find(Filters.eq("year", 1975))
-                .into(new ArrayList<>())
-                .stream()
+    public static <T> T processAndFilter(List<Document> movies, MovieFilter filter, Predicate <Document> predicate, MoviesStreamer<T> streamer){
+        return streamer.process(filter.filter(movies.stream(), predicate));
+    }
+
+
+    /// ---------------------------------------------------------------------------------------------------------------------------------- ///
+
+    public static long countMoviesFrom1975(List<Document> movies){
+            return process(movies, Stream::count);
+    }
+
+
+
+    public static int findLongestMovieRuntime(List<Document> movies) {
+        return processAndFilter(movies, Stream::filter, _ -> true, stream -> stream
+                .map(doc -> doc.getInteger("runtime", 0))
+                .max(Integer::compareTo)
+                .orElse(0));
+    }
+
+
+    public static List<String> countUniqueGenres1975(List<Document> movies) {
+        return process(movies, stream -> stream
                 .flatMap(doc -> doc.getList("genres", String.class).stream())
                 .distinct()
                 .sorted()
-                .collect(Collectors.toList());
-        return result !=null ? result : Collections.EMPTY_LIST;
+                .collect(Collectors.toList()));
     }
 
-    public static List<String> findTopRatedMovieActors(MongoCollection<Document> collection) {
-        var result = collection.find(Filters.exists("imdb", true))
-                .sort(Sorts.descending(("imdb.rating")))
+    public static List<String> findTopRatedMovieActors(List<Document> movies) {
+    return  processAndFilter(movies, Stream::filter, doc -> doc.containsKey("imdb"), stream -> stream
+                .sorted(Comparator.comparing(doc -> doc.getEmbedded(List.of("imdb", "rating"), 0.0)))
                 .limit(1)
                 .map(doc -> doc.getList("cast", String.class))
-                .first();
-
-        return result !=null ? List.copyOf(result) : Collections.EMPTY_LIST;
+                .findFirst()
+                .orElse(Collections.emptyList()));
     }
 
-    //TODO: SHOULD WRITE OUT LITTLE NEMO (1911) AS THE MOVIE WITH THE LEAST ACTORS
-    public static String findMovieWithLeastActors(MongoCollection<Document> collection) {
-        return collection.find(Filters.exists("cast", true))
-                .into(new ArrayList<>())
-                .stream()
-                .map(doc -> new AbstractMap.SimpleEntry<>(doc.getString("title"), doc.getList("cast", String.class).size()))
-                .min(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse("No movie found");
+    public static String findMovieWithLeastActors(List<Document> movies) {
+        return processAndFilter(movies, Stream::filter, doc -> doc.containsKey("cast"), stream -> stream
+                .min(Comparator.comparing(doc -> doc.getList("cast", String.class).size()))
+                .map(doc -> doc.getString("title"))
+                .orElse("No movie found"));
     }
 
-    public static <T> int actorsInMoreThanOneMovie(MongoCollection<Document> collection){
-        var result = collection.find(Filters.exists("cast", true))
-                .into(new ArrayList<>())
-                .stream()
+    public static <T> int actorsInMoreThanOneMovie(List<Document> movies){
+        return processAndFilter(movies, Stream::filter, doc -> doc.containsKey("cast"), stream -> (int) stream
                 .flatMap(doc -> doc.getList("cast", String.class).stream())
                 .collect(Collectors.groupingBy(actor -> actor, Collectors.counting()))
                 .values()
                 .stream()
                 .filter(count -> count > 1)
-                .count();
-        return (int) result; //turns long to int
+                .count());
     }
 
-    public static <T> String actorInMostMovies(MongoCollection<Document> collection){
-        var result = collection.find(Filters.exists("cast", true))
-                .into(new ArrayList<>())
-                .stream()
+    public static <T> String actorInMostMovies(List<Document> movies){
+        return processAndFilter(movies, Stream::filter, doc -> doc.containsKey("cast"), stream -> stream)
                 .flatMap(doc -> doc.getList("cast", String.class).stream())
                 .collect(Collectors.groupingBy(actor -> actor, Collectors.counting()))
                 .entrySet()
                 .stream()
                 .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey);
-        return  result.orElse("No actor found");
+                .map(Map.Entry::getKey)
+                .orElse("No actor found");
     }
 
-    public static int countUniqueLanguages(MongoCollection<Document> collection){
-        var result = collection.find(Filters.exists("languages", true))
-                .into(new ArrayList<>())
-                .stream()
+    public static Long countUniqueLanguages(List<Document> movies){
+        return  processAndFilter(movies, Stream::filter, doc -> doc.containsKey("languages"), stream -> stream)
                 .flatMap(doc -> doc.getList("languages", String.class).stream())
                 .distinct()
                 .count();
-        return (int) result;
     }
 
-    public static boolean hasDuplicateTitles(MongoCollection<Document> collection){
-        var result = collection.find(Filters.exists("title", true))
-                .into(new ArrayList<>())
-                .stream()
-                .collect(Collectors.groupingBy(doc -> doc.getString("title"),Collectors.counting()))
+    public static boolean hasDuplicateTitles(List<Document> movies) {
+        return processAndFilter(movies, Stream::filter, doc -> doc.containsKey("title"), stream -> stream)
+                .collect(Collectors.groupingBy(doc -> doc.getString("title"), Collectors.counting()))
                 .values()
                 .stream()
                 .anyMatch(count -> count > 1);
-        return result;
     }
 
 }

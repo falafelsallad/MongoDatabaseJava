@@ -6,10 +6,12 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Sorts;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.example.Queries;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.mockito.stubbing.Answer;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -19,48 +21,64 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 public class QueriesTest {
-    private MongoCollection<Document> collection;
-    private FindIterable<Document> iterable;
 
+    @Test
+    void convertsCollectionToList(){
 
-    @BeforeEach
-    void setUp() {
-        collection = Mockito.mock(MongoCollection.class);
-        iterable = mock(FindIterable.class);
+            MongoCollection<Document> collection = mock(MongoCollection.class);
+            FindIterable<Document> findIterable = mock(FindIterable.class);
+
+            when(collection.find((Bson) any())).thenReturn(findIterable);
+            when(findIterable.into(anyList())).thenAnswer((Answer<List<Document>>) invocation -> {
+                List<Document> list = invocation.getArgument(0);
+                list.add(new Document("title", "Movie 1").append("year", 1975));
+                list.add(new Document("title", "Movie 2").append("year", 1975));
+                return list;
+            });
+
+            List<Document> movies = Queries.fetchMovies(collection);
+
+            assertNotNull(movies);
+            assertEquals(2, movies.size());
+            assertEquals("Movie 1", movies.get(0).getString("title"));
+            assertEquals("Movie 2", movies.get(1).getString("title"));
+
     }
 
     @Test
-    void testCountMoviesFrom1975() {
-        when(collection.countDocuments(Filters.eq("year", 1975))).thenReturn(5L);
-        assertEquals(5L, Queries.countMoviesFrom1975(collection));
+    void testConvertsOnlyAndAllMovies1975() {
+        MongoCollection<Document> collection = mock(MongoCollection.class);
+        FindIterable<Document> findIterable = mock(FindIterable.class);
+
+        when(collection.find(Filters.eq("year", 1975))).thenReturn(findIterable);
+        when(findIterable.into(anyList())).thenAnswer((Answer<List<Document>>) invocation -> {
+            List<Document> list = invocation.getArgument(0);
+            list.add(new Document("title", "Movie 1").append("year", 1975));
+            list.add(new Document("title", "Movie 2").append("year", 1975));
+//            list.add(new Document("title", "Movie 3").append("year", 1976));
+            return list;
+        });
+
+
+        List<Document> movies = Queries.fetchMovies(collection);
+
+        assertEquals(2, movies.size());
+        assertTrue(movies.stream().allMatch(doc -> doc.getInteger("year") == 1975));
+
+
     }
 
     @Test
-    void testFindLongestMovieRuntime() {
-        Document doc1 = new Document("runtime", 120);
-        Document doc2 = new Document("runtime", 90);
-        when(collection.find(Filters.exists("runtime", true))).thenReturn(iterable);
-        when(iterable.sort(Sorts.descending("runtime"))).thenReturn(iterable);
-        when(iterable.limit(1)).thenReturn(iterable);
-        when(iterable.first()).thenReturn(doc1);
-
-        assertEquals(120, Queries.findLongestMovieRuntime(collection));
+    void testCountsAllMovies1975(){
+        List<Document> movies = Arrays.asList(
+                new Document("year", 1975),
+                new Document("year", 1975),
+                new Document("year", 1975)
+        );
+        assertEquals(3, Queries.countMoviesFrom1975(movies));
     }
 
-    @Test
-    void testCountUniqueGenres1975() {
-      Document doc1 = new Document("genres", Arrays.asList("Action", "Drama"));
-      Document doc2 = new Document("genres", Arrays.asList("Drama", "Comedy"));
-      when(collection.find(Filters.eq("year", 1975))).thenReturn((FindIterable<Document>) Arrays.asList(doc1, doc2));
-        List<String> expected = Arrays.asList("Action", "Comedy", "Drama");
-        assertEquals(expected, Queries.countUniqueGenres1975(collection));
-    }
 
-    @Test
-    void testCountUnique2() {
-
-
-    }
 
 
 

@@ -3,6 +3,9 @@ import com.mongodb.client.model.Filters;
 import org.bson.Document;
 import org.example.Queries;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
 import static org.mockito.Mockito.*;
 
 
@@ -18,7 +21,7 @@ class MongoClientConTest {
                 mock(MongoCollection.class);
 
         when(mockCollection.countDocuments(Filters.eq("year", 1975))).thenReturn(5L);
-        assertEquals(5L, Queries.countMoviesFrom1975(mockCollection));
+        assertEquals(5L, Queries.countMoviesFrom1975((List<Document>) mockCollection));
     }
 
 
