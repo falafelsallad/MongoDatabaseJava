@@ -7,6 +7,7 @@ import java.util.stream.Stream;
 
 public interface MovieFilter {
 
-    Stream<Document> filter(Stream<Document> movies, Predicate<Document> predicate);
+    Stream<Document> filters(Stream<Document> movies, Predicate<Document> predicate);
+
 
 }
