@@ -82,12 +82,24 @@ public class QueriesTest {
     @Test
     void testQ7ActorInMostMovies() {
         List<Document> movies = Arrays.asList(
-                new Document("cast", Arrays.asList("2", "3", "ACTOR B", "5")),    //A CUS IT APPEARS TO BE APHABETICAL!
+                new Document("cast", Arrays.asList("2", "3", "ACTOR B", "5")),
                 new Document("cast", Arrays.asList("ACTOR B", "ACTOR A", "7")),
                 new Document("cast", Arrays.asList("ACTOR A", "13", "17")),
                 new Document("cast", Arrays.asList("19", "23", "ACTOR B", "ACTOR C"))
         );
         assertEquals("ACTOR B", Queries.Q7actorInMostMovies(movies));
+        assertEquals("No actor found", Queries.Q7actorInMostMovies(Collections.emptyList()));
+    }
+
+    @Test
+    void testQ7ActorInMostMoviesB() {
+        List<Document> movies = Arrays.asList(
+                new Document("cast", Arrays.asList("2", "3", "ACTOR B", "5")),    //A CUS IT APPEARS TO BE APHABETICAL!
+                new Document("cast", Arrays.asList("ACTOR B", "ACTOR A", "7")),
+                new Document("cast", Arrays.asList("ACTOR A", "13", "17")),
+                new Document("cast", Arrays.asList("19", "23", "ACTOR B", "ACTOR A"))
+        );
+        assertEquals("ACTOR A", Queries.Q7actorInMostMovies(movies));
         assertEquals("No actor found", Queries.Q7actorInMostMovies(Collections.emptyList()));
     }
 
