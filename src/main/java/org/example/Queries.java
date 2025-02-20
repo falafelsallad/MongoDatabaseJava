@@ -33,13 +33,13 @@ public class Queries {
         return streamer.process(filter.filters(movies.stream(), doc -> true).sorted(comparator).limit(limit));
     }
 
-
     public static long Q1countMoviesFrom1975(List<Document> movies) {
         return process(movies, Stream::count);
     }
 
     public static int Q2findLongestMovieRuntime(List<Document> movies) {
-        return processAndFilter(movies, Stream::filter, _ -> true, stream -> stream
+        return processAndFilter(movies, (stream, predicate) -> stream.filter(predicate),
+                _ -> true, stream -> stream
                 .map(doc -> doc.getInteger("runtime", 0))
                 .max(Integer::compareTo)
                 .orElse(0));

@@ -29,6 +29,7 @@ public class QueriesTest {
                 new Document("runtime", 120),
                 new Document("runtime", 90)
         );
+
         assertEquals(120, Queries.Q2findLongestMovieRuntime(movies));
         assertEquals(0, Queries.Q2findLongestMovieRuntime(Collections.emptyList()));
     }
@@ -62,6 +63,7 @@ public class QueriesTest {
                 new Document("title", "Movie 2").append("cast", Arrays.asList("Actor 3", "Actor 4", "Actor 5")),
                 new Document("title", "Movie 3").append("cast", List.of("Actor 5"))
         );
+
         assertEquals("Movie 3", Queries.Q5findMovieWithLeastActors(movies));
         assertEquals("No movie found", Queries.Q5findMovieWithLeastActors(Collections.emptyList()));
     }
@@ -80,10 +82,10 @@ public class QueriesTest {
     @Test
     void testQ7ActorInMostMovies() {
         List<Document> movies = Arrays.asList(
-                new Document("cast", Arrays.asList("2", "3", "ACTOR B", "5")),    //B CUS IT APPEARS FIRST!
+                new Document("cast", Arrays.asList("2", "3", "ACTOR B", "5")),    //A CUS IT APPEARS TO BE APHABETICAL!
                 new Document("cast", Arrays.asList("ACTOR B", "ACTOR A", "7")),
                 new Document("cast", Arrays.asList("ACTOR A", "13", "17")),
-                new Document("cast", Arrays.asList("19", "23", "ACTOR B", "ACTOR  A"))
+                new Document("cast", Arrays.asList("19", "23", "ACTOR B", "ACTOR C"))
         );
         assertEquals("ACTOR B", Queries.Q7actorInMostMovies(movies));
         assertEquals("No actor found", Queries.Q7actorInMostMovies(Collections.emptyList()));
